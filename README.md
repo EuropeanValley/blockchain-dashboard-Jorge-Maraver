@@ -74,7 +74,7 @@ template-blockchain-dashboard/
 
 ### Kick-off Review
 
-Review time: 2026-04-20 13:31 CEST
+Review time: 2026-04-21 11:22 CEST
 Status: Amber
 
 Strength:
