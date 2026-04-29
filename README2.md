@@ -1,4 +1,4 @@
-# Auxiliary Project Report
+gi# Auxiliary Project Report
 
 This file is used as a parallel documentation/report file for the project. The
 original `README.md` is intentionally left unchanged.

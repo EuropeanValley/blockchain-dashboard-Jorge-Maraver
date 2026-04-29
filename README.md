@@ -9,10 +9,10 @@ Update this README every week.
 
 | Field | Value |
 |---|---|
-| Student Name | |
-| GitHub Username | |
-| Project Title | |
-| Chosen AI Approach | |
+| Student Name | Jorge Maraver Pérez |
+| GitHub Username | Jorge-Maraver |
+| Project Title | Blockchain assignment |
+| Chosen AI Approach | Anomaly detector |
 
 ## Module Tracking
 
@@ -20,30 +20,32 @@ Use one of these values: `Not started`, `In progress`, `Done`
 
 | Module | What it should include | Status |
 |---|---|---|
-| M1 | Proof of Work Monitor | Not started |
-| M2 | Block Header Analyzer | Not started |
-| M3 | Difficulty History | Not started |
-| M4 | AI Component | Not started |
+| M1 | Proof of Work Monitor | Done |
+| M2 | Block Header Analyzer | Done |
+| M3 | Difficulty History | Done |
+| M4 | AI Component | Done |
 
 ## Current Progress
 
 Write 3 to 5 short lines about what you have already done.
 
-- 
-- 
-- 
+- Connected the dashboard to live Bitcoin blockchain APIs.
+- Implemented M1 with Proof of Work metrics, block time distribution, and hash rate estimation.
+- Implemented M2 with local double-SHA256 block header verification.
+- Implemented M3 with difficulty adjustment history and actual/target block time ratios.
+- Implemented M4 as an anomaly detector for Bitcoin inter-block times.
 
 ## Next Step
 
 Write the next small step you will do before the next class.
 
-- 
+- Test all modules end-to-end and prepare the final report summary.
 
 ## Main Problem or Blocker
 
 Write here if you are stuck with something.
 
-- 
+- I’ve had some difficulty understanding the requirements and, especially, how certain blockchain elements function when applied to this specific case.
 
 ## How to Run
 
