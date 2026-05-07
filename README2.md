@@ -116,6 +116,24 @@ M1 is functionally complete for the project requirements. The remaining work is
 not code-related: the same explanation should later be summarized in the final
 PDF report.
 
+### Checkpoint Feedback Update - 2026-05-06
+
+Feedback addressed: M1 needed clearer evidence of a working Proof of Work
+monitor in the dashboard.
+
+The M1 view now makes the live monitor status visible immediately by showing:
+
+- live data loaded from the Blockstream API with fetch timestamp
+- latest block height, difficulty, nonce, transaction count, and block age
+- explicit Proof of Work validity metric
+- latest block hash displayed in the dashboard
+- decoded target threshold and `hash < target` check
+- visual leading-zero comparison in the 256-bit SHA-256 space
+- recent live blocks table
+
+This update is intended to make M1 clearly recognizable as a live Proof of Work
+monitor rather than a placeholder.
+
 ## M2 - Block Header Analyzer
 
 Corresponding task: Required Module M2 - Block Header Analyzer.
@@ -353,6 +371,161 @@ the test intervals. Lower values indicate better out-of-sample fit.
 
 The anomaly rate shows the percentage of test blocks flagged under the selected
 p-value threshold.
+
+## M5 - Merkle Proof Verifier
+
+Corresponding task: Optional Module M5 - Merkle Proof Verifier.
+
+M5 has been implemented in `modules/m5_merkle_proof.py`. It selects a transaction
+from the latest Bitcoin block and verifies its Merkle proof step by step.
+
+### Implemented Values
+
+The module currently shows:
+
+- latest block height
+- number of transactions in the block
+- selected transaction position
+- Merkle proof depth
+- selected transaction id
+- block Merkle root
+- all proof steps from transaction hash to Merkle root
+- final comparison between computed root and API root
+
+### Verification Method
+
+For each level of the Merkle path, M5 checks whether the current hash is the
+left or right child according to its position. It then pairs the current hash
+with the sibling hash, converts both values to Bitcoin's internal byte order, and
+computes:
+
+```text
+SHA256(SHA256(left || right))
+```
+
+The resulting parent hash becomes the current hash for the next level. If the
+final computed hash equals the block header Merkle root, the transaction is
+proved to belong to the block.
+
+### Current Status
+
+M5 is functionally complete. It verifies a real Merkle proof from live Bitcoin
+data and shows each hash computation step.
+
+## M6 - Security Score
+
+Corresponding task: Optional Module M6 - Security Score.
+
+M6 has been implemented in `modules/m6_security_score.py`. It estimates the cost
+scale of a 51% attack on Bitcoin using live network hash rate data and adjustable
+ASIC assumptions.
+
+### Implemented Values
+
+The module currently shows:
+
+- estimated live Bitcoin network hash rate
+- required 51% attack hash rate
+- estimated electricity cost per hour
+- estimated electricity cost per day
+- rough hardware scale in USD
+- confirmation-depth risk curve
+
+### Cost Model
+
+The module estimates network hash rate from recent blocks:
+
+```text
+hashrate = difficulty * 2^32 / average_block_time
+```
+
+It then estimates the attack hash rate as slightly above the live network hash
+rate. Power consumption is estimated from ASIC efficiency:
+
+```text
+power (W) = TH/s * J/TH
+hourly electricity cost = kW * USD/kWh
+```
+
+The hardware cost is a rough capital estimate based on user-selected USD/TH.
+
+### Confirmation Risk
+
+M6 also visualizes how confirmation depth reduces double-spend risk for an
+attacker with less than 50% of the total hash rate. The approximation used is:
+
+```text
+probability approximately equals (q / p)^z
+```
+
+where `q` is the attacker hash share, `p` is the honest hash share, and `z` is
+the number of confirmations.
+
+### Current Status
+
+M6 is functionally complete as an optional security module. The estimates are
+intended for educational analysis, not as exact real-world attack pricing.
+
+## M7 - Second AI Approach
+
+Corresponding task: Optional Module M7 - Second AI approach.
+
+M7 has been implemented in `modules/m7_second_ai.py`. It adds a second AI-style
+method different from M4: a difficulty adjustment predictor.
+
+### Model Choice
+
+The model is a simple linear regression trained on recent Bitcoin difficulty
+adjustment periods. It predicts the next difficulty from:
+
+- current difficulty
+- actual/target period duration ratio
+- previous difficulty change percentage
+
+This is intentionally explainable and lightweight, so it can be understood and
+defended in the project presentation.
+
+### Data Used
+
+M7 uses real Bitcoin blocks at 2016-block adjustment boundaries. For each
+completed period it computes:
+
+- period start height
+- adjustment height
+- current difficulty
+- actual/target duration ratio
+- previous difficulty change
+- actual next difficulty
+
+The data is split chronologically into training and test periods.
+
+### Evaluation Metrics
+
+M7 compares the linear regression model with a protocol-formula baseline:
+
+```text
+baseline prediction = current difficulty / actual_target_ratio
+```
+
+The dashboard reports:
+
+- MAE
+- MAPE
+- actual next difficulty
+- regression prediction
+- baseline prediction
+- prediction error percentages
+
+### Current Period Forecast
+
+For the current incomplete adjustment period, M7 estimates the projected
+actual/target ratio from blocks mined so far and produces a forecast for the next
+difficulty adjustment.
+
+### Current Status
+
+M7 is functionally complete as an optional second AI approach. It trains and
+evaluates a predictor on real blockchain data and compares it with a baseline.
 
 ### Dashboard Output
 

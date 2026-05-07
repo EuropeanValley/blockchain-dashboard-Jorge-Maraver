@@ -40,6 +40,12 @@ def _format_hashrate(hashrate: float) -> str:
     return f"{value:,.2f} ZH/s"
 
 
+def _format_block_age(seconds: float) -> str:
+    """Format a block age as minutes and seconds."""
+    minutes, remainder = divmod(max(0, int(seconds)), 60)
+    return f"{minutes}m {remainder}s"
+
+
 @st.cache_data(ttl=60)
 def _load_recent_blocks(n_blocks: int) -> list[dict]:
     return get_recent_blocks(n_blocks)
@@ -82,8 +88,13 @@ def render() -> None:
     latest = blocks[0]
     target = _target_from_bits(int(latest["bits"]))
     target_hex = f"{target:064x}"
+    hash_is_valid = int(latest["id"], 16) < target
     leading_zero_bits = _leading_zero_bits(latest["id"])
     leading_zero_hex = len(latest["id"]) - len(latest["id"].lstrip("0"))
+    target_zero_bits = 256 - target.bit_length()
+    latest_timestamp = pd.to_datetime(latest["timestamp"], unit="s")
+    fetched_at = pd.Timestamp.now(tz="UTC")
+    block_age_seconds = (fetched_at.tz_localize(None) - latest_timestamp).total_seconds()
 
     ordered_blocks = sorted(blocks, key=lambda block: block["height"])
     rows = []
@@ -104,28 +115,67 @@ def render() -> None:
     hashrate_from_window = latest["difficulty"] * 2**32 / average_seconds
     hashrate_target_interval = latest["difficulty"] * 2**32 / 600
 
-    metric_cols = st.columns(5)
+    st.success(
+        "Live Proof of Work data loaded from Blockstream API "
+        f"at {fetched_at.strftime('%Y-%m-%d %H:%M:%S UTC')}."
+    )
+
+    metric_cols = st.columns(6)
     metric_cols[0].metric("Latest height", f"{latest['height']:,}")
     metric_cols[1].metric("Difficulty", f"{latest['difficulty']:,.0f}")
-    metric_cols[2].metric("Nonce", f"{latest['nonce']:,}")
-    metric_cols[3].metric("Transactions", f"{latest['tx_count']:,}")
-    metric_cols[4].metric("Bits", latest["bits"])
+    metric_cols[2].metric("PoW check", "Valid" if hash_is_valid else "Invalid")
+    metric_cols[3].metric("Nonce", f"{latest['nonce']:,}")
+    metric_cols[4].metric("Transactions", f"{latest['tx_count']:,}")
+    metric_cols[5].metric("Block age", _format_block_age(block_age_seconds))
+
+    st.subheader("Live Block Snapshot")
+    snapshot_cols = st.columns([2, 1, 1])
+    with snapshot_cols[0]:
+        st.code(
+            f"height = {latest['height']}\n"
+            f"hash   = {latest['id']}\n"
+            f"time   = {latest_timestamp}",
+            language="text",
+        )
+    with snapshot_cols[1]:
+        st.metric("Bits", latest["bits"])
+        st.metric("Leading zero bits", leading_zero_bits)
+    with snapshot_cols[2]:
+        st.metric("Difficulty", f"{latest['difficulty']:,.0f}")
+        st.metric("Leading zero hex", leading_zero_hex)
 
     st.subheader("Target Threshold")
     st.caption(
         "The block hash must be numerically below the target decoded from bits. "
         "More leading zero bits mean a smaller valid hash region in the 256-bit space."
     )
+    threshold_df = pd.DataFrame(
+        [
+            {"Value": "Hash leading zero bits", "Bits": leading_zero_bits},
+            {"Value": "Target leading zero-bit prefix", "Bits": target_zero_bits},
+        ]
+    )
+    threshold_fig = px.bar(
+        threshold_df,
+        x="Value",
+        y="Bits",
+        text="Bits",
+        title="Leading-Zero Evidence in the 256-bit SHA-256 Space",
+        labels={"Bits": "Leading zero bits"},
+    )
+    threshold_fig.update_yaxes(range=[0, max(100, leading_zero_bits + 10)])
+    threshold_fig.update_layout(showlegend=False)
+    st.plotly_chart(threshold_fig, width="stretch")
     st.code(
         f"hash   = {latest['id']}\n"
         f"target = {target_hex}\n"
-        f"hash < target: {int(latest['id'], 16) < target}",
+        f"hash < target: {hash_is_valid}",
         language="text",
     )
     target_cols = st.columns(3)
     target_cols[0].metric("Leading zero hex digits", leading_zero_hex)
     target_cols[1].metric("Leading zero bits", leading_zero_bits)
-    target_cols[2].metric("Target zero-bit prefix", 256 - target.bit_length())
+    target_cols[2].metric("Target zero-bit prefix", target_zero_bits)
 
     st.subheader("Inter-Block Time Distribution")
     st.caption(
@@ -154,6 +204,30 @@ def render() -> None:
     hash_cols[1].metric("Window estimate", _format_hashrate(hashrate_from_window))
     hash_cols[2].metric("600s baseline", _format_hashrate(hashrate_target_interval))
 
+    recent_block_df = pd.DataFrame(
+        [
+            {
+                "Height": block["height"],
+                "Timestamp": pd.to_datetime(block["timestamp"], unit="s"),
+                "Hash": block["id"],
+                "Difficulty": block["difficulty"],
+                "Nonce": block["nonce"],
+                "Transactions": block["tx_count"],
+            }
+            for block in blocks[:10]
+        ]
+    )
+    st.subheader("Recent Live Blocks")
+    st.dataframe(
+        recent_block_df,
+        width="stretch",
+        hide_index=True,
+        column_config={
+            "Difficulty": st.column_config.NumberColumn(format="%.0f"),
+        },
+    )
+
+    st.subheader("Inter-Block Time Data")
     st.dataframe(
         df.sort_values("Height", ascending=False),
         width="stretch",

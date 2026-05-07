@@ -96,6 +96,22 @@ def get_block_header_hex(block_hash: str) -> str:
     return response.text.strip()
 
 
+def get_block_txids(block_hash: str) -> list[str]:
+    """Return all transaction ids in a block."""
+    response = requests.get(f"{BLOCKSTREAM_BASE_URL}/block/{block_hash}/txids", timeout=10)
+    response.raise_for_status()
+    return response.json()
+
+
+def get_tx_merkle_proof(txid: str) -> dict:
+    """Return the Merkle proof for a transaction id."""
+    response = requests.get(
+        f"{BLOCKSTREAM_BASE_URL}/tx/{txid}/merkle-proof", timeout=10
+    )
+    response.raise_for_status()
+    return response.json()
+
+
 def get_difficulty_history(n_points: int = 100) -> list[dict]:
     """Return the last *n_points* difficulty values as a list of dicts."""
     response = requests.get(
